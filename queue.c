@@ -70,8 +70,8 @@ void destroyQueue(void)
     while (!jobs.empty)
     {
         tmp = jobs.first->next;
-        free(jobs.first)
-            jobs.first = tmp;
+        free(jobs.first);
+        jobs.first = tmp;
         jobs.size--;
         if (jobs.size == 0)
         {
@@ -83,14 +83,15 @@ void destroyQueue(void)
     while (!workers.empty)
     {
         tmp = workers.first->next;
-        free(workers.first)
-            workers.first = tmp;
+        free(workers.first);
+        workers.first = tmp;
         workers.size--;
         if (workers.size == 0)
         {
             workers.empty = true;
         }
     }
+    count_visited = 0;
     mtx_unlock(&lock);
     mtx_destroy(&lock);
 }
@@ -98,6 +99,7 @@ void destroyQueue(void)
 void enqueue(void *t)
 {
     Node *tmp;
+    size_t i;
     mtx_lock(&lock);
 
     // We do not need to check malloc.
@@ -119,12 +121,53 @@ void enqueue(void *t)
     jobs.size++;
 
     // Need to send signal to wake up the first worker in the workers queue.
-    if (!workers.empty)
+    if (!workers.empty && workers.size >= jobs.size)
     {
-        cnd_signal((cnd_t *)workers.first->data);
+        // Need to do a walk to the specific worker.
+        tmp = workers.first;
+        for (i = 1; i < jobs.size; ++i)
+        {
+            tmp = tmp->next;
+        }
+        cnd_signal((cnd_t *)tmp->data);
     }
+    // printf("(jobs : %zu, workers :  %zu) \n", jobs.size, workers.size);
     mtx_unlock(&lock);
 }
+
+// void enqueue(void *t)
+// {
+//     Node *tmp;
+//     mtx_lock(&lock);
+
+//     // We do not need to check malloc.
+//     tmp = malloc(sizeof(Node));
+//     tmp->data = t;
+//     tmp->next = NULL;
+
+//     if (jobs.empty)
+//     {
+//         jobs.first = tmp;
+//         jobs.last = jobs.first;
+//         jobs.empty = false;
+//     }
+//     else
+//     {
+//         jobs.last->next = tmp;
+//         jobs.last = tmp;
+//     }
+//     jobs.size++;
+
+//     // Need to send signal to wake up the first worker in the workers queue.
+//     if (!workers.empty )
+//     {
+//         // need to do a walk to the spesific worker.
+//         // now the thread on the dequeue can done before enqueue ending safe ?
+//         cnd_signal((cnd_t *)workers.first->data);
+//     }
+//     printf("(jobs : %zu, workers :  %zu) \n", jobs.size, workers.size);
+//     mtx_unlock(&lock);
+// }
 
 void *dequeue(void)
 {
@@ -153,7 +196,6 @@ void *dequeue(void)
         {
             jobs.first = NULL;
             jobs.last = NULL;
-            jobs.empty = true;
         }
         else
         {
@@ -163,8 +205,16 @@ void *dequeue(void)
                 jobs.last->next = NULL;
             }
             else
+            //
             {
-                prev->next = tmp->next;
+                if (prev == NULL)
+                {
+                    jobs.first = tmp->next;
+                }
+                else
+                {
+                    prev->next = tmp->next;
+                }
             }
         }
 
@@ -187,7 +237,7 @@ void *dequeue(void)
         tmp->next = NULL;
         if (!workers.empty || jobs.empty)
         {
-
+            // jobs.empty
             if (workers.empty)
             {
                 workers.first = tmp;
@@ -236,6 +286,7 @@ void *dequeue(void)
 
     free(tmp);
     //  =====================================================================================
+
     mtx_unlock(&lock);
     count_visited++;
     return t;
@@ -280,7 +331,15 @@ bool tryDequeue(void **t)
             }
             else
             {
-                prev->next = tmp->next;
+
+                if (prev == NULL)
+                {
+                    jobs.first = tmp->next;
+                }
+                else
+                {
+                    prev->next = tmp->next;
+                }
             }
         }
 
