@@ -29,6 +29,14 @@ atomic_size_t count_visited = 0;
 
 mtx_t lock;
 
+void enter_job_to_Jobs_queue(void *t);
+int wake_up_worker(void);
+void *wait_for_a_job(void);
+void *get_a_job(void);
+void destroyWorkers(void);
+void destroyJobs(void);
+void initWorkers(void);
+void initJobs(void);
 /*
 Need to check if I need to initialized the lock outside the function.
 The reason for that it is that the user can creat a new thread and call to
@@ -60,7 +68,7 @@ void destroyQueue(void)
 
     // Free jobs and workers queue
     destroyJobs();
-    destroyQueue();
+    destroyWorkers();
 
     count_visited = 0;
     mtx_unlock(&lock);
@@ -78,7 +86,7 @@ void enqueue(void *t)
     {
         if (wake_up_worker() != 0)
         {
-            printf("an error have been occurs sending a signal."\n);
+            printf("an error have been occurs sending a signal.\n");
         }
     }
 
@@ -108,9 +116,6 @@ void *dequeue(void)
 
 bool tryDequeue(void **t)
 {
-    size_t i;
-    Node *tmp;
-    Node *prev;
 
     mtx_lock(&lock);
 
