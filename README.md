@@ -1,6 +1,7 @@
 # Parallel Queue
 This repository contains an implementation of a generic concurrent FIFO (First-In-First-Out) queue that supports enqueue and dequeue operations using threads. 
-\(Assignment 4, Operating Systems course at Tel Aviv University) 
+
+(Assignment 4, Operating Systems course at Tel Aviv University) 
 
 ## Introduction
 The goal of this project is to provide hands-on experience with threads and concurrent programming. The queue implementation allows multiple threads to enqueue and dequeue items concurrently while maintaining thread safety and preserving the FIFO order.
